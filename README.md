@@ -34,7 +34,7 @@ Tambahkan `rustbasic-permission` ke dalam berkas `Cargo.toml` pada root proyek a
 
 ```toml
 [dependencies]
-rustbasic-permission = { path = "../rustbasic-permission", version = "0.1.4" }
+rustbasic-permission = "0.0.1"
 ```
 
 ---
