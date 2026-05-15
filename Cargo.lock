@@ -2545,7 +2545,7 @@ dependencies = [
 
 [[package]]
 name = "rustbasic-permission"
-version = "0.0.3"
+version = "0.0.5"
 dependencies = [
  "async-trait",
  "axum",
