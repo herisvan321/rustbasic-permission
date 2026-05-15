@@ -252,7 +252,7 @@ fn update_model_mod_rs(class_name: &str, snake_name: &str) {
     let mod_path = "src/app/models/mod.rs";
     if !std::path::Path::new(mod_path).exists() { return; }
 
-    let mut content = fs::read_to_string(mod_path).unwrap_or_default();
+    let content = fs::read_to_string(mod_path).unwrap_or_default();
 
     let mod_line = format!("pub mod {};", snake_name);
     if content.contains(&mod_line) {
