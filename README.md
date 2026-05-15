@@ -39,11 +39,11 @@ rustbasic-permission = "0.0.3"
 
 ---
 
-### 2. Inisialisasi Otomatis (Migrations & Models)
-Untuk membuat tabel dan model secara otomatis, jalankan perintah berikut di root proyek Anda:
+### 2. Inisialisasi Otomatis (Magic Scaffolding)
+Cukup jalankan build pada proyek Anda, dan `rustbasic-permission` akan secara otomatis membuat migrasi dan model yang diperlukan jika belum ada:
 
 ```bash
-cargo run --bin rustbasic-permission -- install
+cargo build
 ```
 
 Perintah ini akan secara otomatis membuat:

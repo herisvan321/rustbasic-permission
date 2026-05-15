@@ -1,7 +1,8 @@
 [package]
 name = "rustbasic-permission"
-version = "0.0.3"
+version = "0.0.4"
 edition = "2024"
+build = "build.rs"
 description = "Role and Permission management package for the RustBasic Framework."
 license = "MIT"
 repository = "https://github.com/herisvan321/rustbasic-permission"
@@ -23,6 +24,9 @@ axum = "0.8.9"
 async-trait = "0.1.86"
 tracing = "0.1.44"
 colored = "3.0.0"
+chrono = "0.4.39"
+
+[build-dependencies]
 chrono = "0.4.39"
 
 [[bin]]
