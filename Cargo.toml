@@ -1,6 +1,6 @@
 [package]
 name = "rustbasic-permission"
-version = "0.0.1"
+version = "0.0.2"
 edition = "2024"
 description = "Role and Permission management package for the RustBasic Framework."
 license = "MIT"
@@ -22,3 +22,9 @@ tokio = { version = "1.52.1", features = ["full"] }
 axum = "0.8.9"
 async-trait = "0.1.86"
 tracing = "0.1.44"
+colored = "3.0.0"
+chrono = "0.4.39"
+
+[[bin]]
+name = "rustbasic-permission"
+path = "src/bin/permission.rs"

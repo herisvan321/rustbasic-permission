@@ -2549,6 +2549,8 @@ version = "0.0.1"
 dependencies = [
  "async-trait",
  "axum",
+ "chrono",
+ "colored",
  "rustbasic-core",
  "sea-orm",
  "serde",

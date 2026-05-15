@@ -34,28 +34,25 @@ Tambahkan `rustbasic-permission` ke dalam berkas `Cargo.toml` pada root proyek a
 
 ```toml
 [dependencies]
-rustbasic-permission = "0.0.1"
+rustbasic-permission = "0.0.2"
 ```
 
 ---
 
-### 2. Inisialisasi Tabel Otomatis
-Pada berkas `src/main.rs`, panggil fungsi inisialisasi skema mandiri agar seluruh tabel pivot dan referensi RBAC otomatis dibangun jika belum ada:
+### 2. Inisialisasi Otomatis (Migrations & Models)
+Untuk membuat tabel dan model secara otomatis, jalankan perintah berikut di root proyek Anda:
 
-```rust
-use rustbasic_permission::init_permission_tables;
-use rustbasic_core::sea_orm::Database;
+```bash
+cargo run --bin rustbasic-permission -- install
+```
 
-#[tokio::main]
-async fn main() {
-    // Koneksi Database utama
-    let db = Database::connect("sqlite:database/rustbasic.sqlite?mode=rwc").await.unwrap();
-    
-    // Otomatis membuat tabel-tabel RBAC tanpa file migrasi manual
-    init_permission_tables(&db).await.expect("Gagal membuat tabel permission");
-    
-    // Lanjutkan inisialisasi server...
-}
+Perintah ini akan secara otomatis membuat:
+- 📂 **Migration**: File migrasi baru di `database/migrations/` untuk 5 tabel RBAC.
+- 📂 **Models**: File model Sea-ORM di `src/app/models/` (`Role`, `Permission`, dll).
+
+Setelah menjalankan perintah di atas, jalankan migrasi database:
+```bash
+rustbasic migrate
 ```
 
 ---
