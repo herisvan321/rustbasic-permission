@@ -8,7 +8,7 @@ pub use migration::init_permission_tables;
 pub use service::PermissionService;
 pub use checker::PermissionChecker;
 
-// Re-export entitas SeaORM agar pengguna bisa melakukan kueri kustom secara langsung
+// Re-export entitas agar pengguna bisa melakukan kueri kustom secara langsung
 pub use entities::{
-    roles, permissions, model_has_roles, model_has_permissions, role_has_permissions,
+    Role, Permission, ModelHasRole, ModelHasPermission, RoleHasPermission,
 };

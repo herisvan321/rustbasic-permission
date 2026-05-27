@@ -9,8 +9,6 @@ fn main() {
     }
 
     // Ambil direktori kerja saat ini. 
-    // Saat 'cargo build' dijalankan di proyek utama (misal: cobasaja), 
-    // PWD biasanya menunjuk ke root proyek tersebut.
     let project_root = match env::var("PWD") {
         Ok(pwd) => PathBuf::from(pwd),
         Err(_) => match env::current_dir() {
@@ -46,60 +44,62 @@ fn main() {
         let migration_path = migrations_dir.join(format!("{}.rs", migration_name));
 
         let migration_template = format!(
-r#"use sea_orm_migration::prelude::*;
-use async_trait::async_trait;
+r#"use rustbasic_core::{{Schema, SchemaManager, MigrationTrait, DbErr}};
+use rustbasic_core::async_trait;
 
-#[derive(Iden)]
-pub enum Roles {{
-    Table, Id, Name, GuardName, CreatedAt, UpdatedAt,
-}}
-
-#[derive(Iden)]
-pub enum Permissions {{
-    Table, Id, Name, GuardName, CreatedAt, UpdatedAt,
-}}
-
-#[derive(Iden)]
-pub enum ModelHasRoles {{
-    Table, Id, RoleId, ModelType, ModelId,
-}}
-
-#[derive(Iden)]
-pub enum ModelHasPermissions {{
-    Table, Id, PermissionId, ModelType, ModelId,
-}}
-
-#[derive(Iden)]
-pub enum RoleHasPermissions {{
-    Table, Id, PermissionId, RoleId,
-}}
-
-#[derive(Iden)]
 pub struct Migration;
-
-impl MigrationName for Migration {{
-    fn name(&self) -> &str {{
-        "{migration_name}"
-    }}
-}}
 
 #[async_trait]
 impl MigrationTrait for Migration {{
-    async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {{
-        manager.create_table(Table::create().table(Roles::Table).if_not_exists().col(ColumnDef::new(Roles::Id).integer().not_null().auto_increment().primary_key()).col(ColumnDef::new(Roles::Name).string().not_null().unique_key()).col(ColumnDef::new(Roles::GuardName).string().not_null().default("web")).col(ColumnDef::new(Roles::CreatedAt).date_time().default(Expr::current_timestamp())).col(ColumnDef::new(Roles::UpdatedAt).date_time().default(Expr::current_timestamp())).to_owned()).await?;
-        manager.create_table(Table::create().table(Permissions::Table).if_not_exists().col(ColumnDef::new(Permissions::Id).integer().not_null().auto_increment().primary_key()).col(ColumnDef::new(Permissions::Name).string().not_null().unique_key()).col(ColumnDef::new(Permissions::GuardName).string().not_null().default("web")).col(ColumnDef::new(Permissions::CreatedAt).date_time().default(Expr::current_timestamp())).col(ColumnDef::new(Permissions::UpdatedAt).date_time().default(Expr::current_timestamp())).to_owned()).await?;
-        manager.create_table(Table::create().table(ModelHasRoles::Table).if_not_exists().col(ColumnDef::new(ModelHasRoles::Id).integer().not_null().auto_increment().primary_key()).col(ColumnDef::new(ModelHasRoles::RoleId).integer().not_null()).col(ColumnDef::new(ModelHasRoles::ModelType).string().not_null()).col(ColumnDef::new(ModelHasRoles::ModelId).integer().not_null()).to_owned()).await?;
-        manager.create_table(Table::create().table(ModelHasPermissions::Table).if_not_exists().col(ColumnDef::new(ModelHasPermissions::Id).integer().not_null().auto_increment().primary_key()).col(ColumnDef::new(ModelHasPermissions::PermissionId).integer().not_null()).col(ColumnDef::new(ModelHasPermissions::ModelType).string().not_null()).col(ColumnDef::new(ModelHasPermissions::ModelId).integer().not_null()).to_owned()).await?;
-        manager.create_table(Table::create().table(RoleHasPermissions::Table).if_not_exists().col(ColumnDef::new(RoleHasPermissions::Id).integer().not_null().auto_increment().primary_key()).col(ColumnDef::new(RoleHasPermissions::PermissionId).integer().not_null()).col(ColumnDef::new(RoleHasPermissions::RoleId).integer().not_null()).to_owned()).await?;
+    fn name(&self) -> &str {{
+        "{migration_name}"
+    }}
+
+    async fn up<'a>(&self, manager: &'a SchemaManager<'a>) -> Result<(), DbErr> {{
+        // 1. Table roles
+        Schema::create(manager, "roles", |table| {{
+            table.string("name").unique().not_null();
+            table.string("guard_name").default("web").not_null();
+        }}).await?;
+
+        // 2. Table permissions
+        Schema::create(manager, "permissions", |table| {{
+            table.string("name").unique().not_null();
+            table.string("guard_name").default("web").not_null();
+        }}).await?;
+
+        // 3. Table model_has_roles
+        Schema::create(manager, "model_has_roles", |table| {{
+            table.no_timestamps();
+            table.integer("role_id").not_null();
+            table.string("model_type").not_null();
+            table.integer("model_id").not_null();
+        }}).await?;
+
+        // 4. Table model_has_permissions
+        Schema::create(manager, "model_has_permissions", |table| {{
+            table.no_timestamps();
+            table.integer("permission_id").not_null();
+            table.string("model_type").not_null();
+            table.integer("model_id").not_null();
+        }}).await?;
+
+        // 5. Table role_has_permissions
+        Schema::create(manager, "role_has_permissions", |table| {{
+            table.no_timestamps();
+            table.integer("permission_id").not_null();
+            table.integer("role_id").not_null();
+        }}).await?;
+
         Ok(())
     }}
 
-    async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {{
-        manager.drop_table(Table::drop().table(RoleHasPermissions::Table).to_owned()).await?;
-        manager.drop_table(Table::drop().table(ModelHasPermissions::Table).to_owned()).await?;
-        manager.drop_table(Table::drop().table(ModelHasRoles::Table).to_owned()).await?;
-        manager.drop_table(Table::drop().table(Permissions::Table).to_owned()).await?;
-        manager.drop_table(Table::drop().table(Roles::Table).to_owned()).await?;
+    async fn down<'a>(&self, manager: &'a SchemaManager<'a>) -> Result<(), DbErr> {{
+        Schema::drop(manager, "role_has_permissions").await?;
+        Schema::drop(manager, "model_has_permissions").await?;
+        Schema::drop(manager, "model_has_roles").await?;
+        Schema::drop(manager, "permissions").await?;
+        Schema::drop(manager, "roles").await?;
         Ok(())
     }}
 }}
@@ -112,41 +112,33 @@ impl MigrationTrait for Migration {{
 
     // 2. Buat Model
     let models = vec![
-        ("role", "roles", "    pub name: String,\n    pub guard_name: String,"),
-        ("permission", "permissions", "    pub name: String,\n    pub guard_name: String,"),
-        ("model_has_role", "model_has_roles", "    pub role_id: i32,\n    pub model_type: String,\n    pub model_id: i32,"),
-        ("model_has_permission", "model_has_permissions", "    pub permission_id: i32,\n    pub model_type: String,\n    pub model_id: i32,"),
-        ("role_has_permission", "role_has_permissions", "    pub permission_id: i32,\n    pub role_id: i32,"),
+        ("role", "roles", "Role", "    pub name: String,\n        pub guard_name: String,"),
+        ("permission", "permissions", "Permission", "    pub name: String,\n        pub guard_name: String,"),
+        ("model_has_role", "model_has_roles", "ModelHasRole", "    pub role_id: i32,\n        pub model_type: String,\n        pub model_id: i32,"),
+        ("model_has_permission", "model_has_permissions", "ModelHasPermission", "    pub permission_id: i32,\n        pub model_type: String,\n        pub model_id: i32,"),
+        ("role_has_permission", "role_has_permissions", "RoleHasPermission", "    pub permission_id: i32,\n        pub role_id: i32,"),
     ];
 
     let models_dir = project_root.join("src/app/models");
     fs::create_dir_all(&models_dir).ok();
 
-    for (name, table, fields) in models {
+    for (name, table, class_name, fields) in models {
         let file_path = models_dir.join(format!("{}.rs", name));
         if !file_path.exists() {
             let model_template = format!(
-r#"use rustbasic_core::sea_orm::entity::prelude::*;
-use serde::{{Deserialize, Serialize}};
+r#"use rustbasic_core::model;
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
-#[sea_orm(table_name = "{table}")]
-pub struct Model {{
-    #[sea_orm(primary_key)]
-    pub id: i32,
-{fields}
-    pub created_at: Option<DateTime>,
-    pub updated_at: Option<DateTime>,
+model! {{
+    table: "{table}",
+    {class_name} {{
+        pub id: i32,
+    {fields}
+    }}
 }}
-
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {{}}
-
-impl ActiveModelBehavior for ActiveModel {{}}
-"#, table = table, fields = fields);
+"#, table = table, class_name = class_name, fields = fields);
 
             if fs::write(&file_path, model_template).is_ok() {
-                update_model_mod_rs(&project_root, &to_pascal_case(name), name);
+                update_model_mod_rs(&project_root, class_name, name);
             }
         }
     }
@@ -163,10 +155,9 @@ fn update_migration_mod_rs(project_root: &std::path::Path, mod_name: &str) {
     }
 
     let search_pattern = "fn migrations() -> Vec<Box<dyn MigrationTrait>> {";
-    if let Some(pos) = content.find(search_pattern) {
-        if let Some(insert_pos) = content[pos..].find("        ]") {
-            content.insert_str(pos + insert_pos, &format!("            Box::new({}::Migration),\n", mod_name));
-        }
+    if let Some(pos) = content.find(search_pattern)
+        && let Some(insert_pos) = content[pos..].find("        ]") {
+        content.insert_str(pos + insert_pos, &format!("            Box::new({}::Migration),\n", mod_name));
     }
 
     fs::write(mod_path, content).ok();
@@ -184,16 +175,5 @@ fn update_model_mod_rs(project_root: &std::path::Path, class_name: &str, snake_n
     let mut file = fs::OpenOptions::new().append(true).open(mod_path).unwrap();
     use std::io::Write;
     writeln!(file, "pub mod {};", snake_name).ok();
-    writeln!(file, "pub use {}::Entity as {};", snake_name, class_name).ok();
-}
-
-fn to_pascal_case(s: &str) -> String {
-    let mut result = String::new();
-    let mut capitalize_next = true;
-    for c in s.chars() {
-        if c == '_' { capitalize_next = true; }
-        else if capitalize_next { result.push(c.to_ascii_uppercase()); capitalize_next = false; }
-        else { result.push(c); }
-    }
-    result
+    writeln!(file, "pub use {}::{};", snake_name, class_name).ok();
 }

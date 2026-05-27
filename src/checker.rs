@@ -1,21 +1,20 @@
-use sea_orm::{DatabaseConnection, DbErr};
-use rustbasic_core::axum_session::Session;
-use rustbasic_core::session_manager::RustBasicSessionStore;
+use rustbasic_core::sqlx::{self, AnyPool};
+use rustbasic_core::session::Session;
 use rustbasic_core::responses::ResponseHelper;
-use axum::response::Response;
+use rustbasic_core::router::Response;
 use crate::service::PermissionService;
 
-/// Helper `PermissionChecker` dirancang untuk digunakan langsung di dalam controller Axum
+/// Helper `PermissionChecker` dirancang digunakan langsung di dalam controller RustBasic
 /// guna memverifikasi hak akses pengguna yang sedang aktif di session.
 pub struct PermissionChecker<'a> {
-    pub db: &'a DatabaseConnection,
-    pub session: &'a Session<RustBasicSessionStore>,
+    pub db: &'a AnyPool,
+    pub session: &'a Session,
     pub model_type: &'a str,
 }
 
 impl<'a> PermissionChecker<'a> {
     /// Membuat instance `PermissionChecker` dengan target model_type default `"users"`.
-    pub fn new(db: &'a DatabaseConnection, session: &'a Session<RustBasicSessionStore>) -> Self {
+    pub fn new(db: &'a AnyPool, session: &'a Session) -> Self {
         Self {
             db,
             session,
@@ -25,8 +24,8 @@ impl<'a> PermissionChecker<'a> {
 
     /// Membuat instance `PermissionChecker` dengan model_type kustom.
     pub fn with_model_type(
-        db: &'a DatabaseConnection,
-        session: &'a Session<RustBasicSessionStore>,
+        db: &'a AnyPool,
+        session: &'a Session,
         model_type: &'a str,
     ) -> Self {
         Self {
@@ -42,7 +41,7 @@ impl<'a> PermissionChecker<'a> {
     }
 
     /// Memeriksa apakah user yang sedang login memiliki Role tertentu.
-    pub async fn has_role(&self, role_name: &str) -> Result<bool, DbErr> {
+    pub async fn has_role(&self, role_name: &str) -> Result<bool, sqlx::Error> {
         let uid = match self.user_id() {
             Some(id) => id,
             None => return Ok(false),
@@ -51,7 +50,7 @@ impl<'a> PermissionChecker<'a> {
     }
 
     /// Memeriksa apakah user yang sedang login memiliki Permission tertentu.
-    pub async fn has_permission(&self, permission_name: &str) -> Result<bool, DbErr> {
+    pub async fn has_permission(&self, permission_name: &str) -> Result<bool, sqlx::Error> {
         let uid = match self.user_id() {
             Some(id) => id,
             None => return Ok(false),

@@ -1,19 +1,10 @@
-use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
-#[sea_orm(table_name = "roles")]
-pub struct Model {
-    #[sea_orm(primary_key)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Role {
     pub id: i32,
-    #[sea_orm(unique)]
     pub name: String,
     pub guard_name: String,
-    pub created_at: DateTime,
-    pub updated_at: DateTime,
+    pub created_at: Option<String>,
+    pub updated_at: Option<String>,
 }
-
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {}
-
-impl ActiveModelBehavior for ActiveModel {}

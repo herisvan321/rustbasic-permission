@@ -2,7 +2,7 @@
 
 Package **Role-Based Access Control (RBAC)** yang sangat elegan, cepat, dan terintegrasi penuh untuk framework **RustBasic**, menghadirkan fungsionalitas tingkat tinggi dengan otomatisasi berarsitektur **Global View Interceptor**.
 
-Dirancang khusus untuk ekosistem **Axum** dan **SeaORM**, package ini memungkinkan Anda mengelola Role dan Permission dengan kemudahan maksimal, keamanan tipe (type-safety) khas Rust, dan **tanpa perlu konfigurasi atau pengiriman variabel secara berulang di setiap Controller**.
+Dirancang khusus untuk ekosistem **RustBasic** dan **sqlx**, package ini memungkinkan Anda mengelola Role dan Permission dengan kemudahan maksimal, keamanan tipe (type-safety) khas Rust, dan **tanpa perlu konfigurasi atau pengiriman variabel secara berulang di setiap Controller**.
 
 ---
 
@@ -48,7 +48,7 @@ cargo build
 
 Perintah ini akan secara otomatis membuat:
 - 📂 **Migration**: File migrasi baru di `database/migrations/` untuk 5 tabel RBAC.
-- 📂 **Models**: File model Sea-ORM di `src/app/models/` (`Role`, `Permission`, dll).
+- 📂 **Models**: File model di `src/app/models/` (`Role`, `Permission`, dll).
 
 Setelah menjalankan perintah di atas, jalankan migrasi database:
 ```bash
@@ -95,7 +95,7 @@ pub fn view(
     req: &rustbasic_core::requests::Request,
     template: &str,
     ctx: rustbasic_core::minijinja::Value,
-) -> rustbasic_core::axum::response::Response {
+) -> rustbasic_core::router::Response {
     let mut obj = match serde_json::to_value(&ctx) {
         Ok(serde_json::Value::Object(map)) => map,
         _ => serde_json::Map::new(),
@@ -123,7 +123,7 @@ use rustbasic_core::minijinja::context;
 
 pub async fn index(State(state): State<AppState>, req: Request) -> impl IntoResponse {
     // Ambil data bisnis spesifik halaman
-    let total_users = users::Entity::find().count(&state.db).await.unwrap_or(0);
+    let total_users = users::Model::count(&state.db).await.unwrap_or(0);
 
     // Langsung render! Daftar kapabilitas diinjeksi secara transparan di balik layar.
     view(&req, "dashboard.rb.html", context! {
@@ -150,27 +150,102 @@ pub async fn create_user(State(state): State<AppState>, req: Request) -> impl In
 
 ---
 
-### 6. Pengecekan Langsung di Template (MiniJinja)
-Kini Anda dapat langsung menggunakan operasi standar pengecekan keanggotaan *array* dalam *template* HTML Anda secara ringkas dan deklaratif:
 
-```jinja
-<nav class="sidebar-menu">
-    <a href="/dashboard" class="btn">📊 Dashboard</a>
+## ⚛️ Integrasi dengan React.js + Inertia.js (SPA)
 
-    <!-- Pemeriksaan Sederhana via user_permissions -->
-    {% if "edit articles" in user_permissions %}
-        <a href="#" class="btn">📝 Tulis Artikel</a>
-    {% endif %}
+Jika aplikasi Anda menggunakan arsitektur **React.js + Inertia.js SPA** (menggantikan *engine template* MiniJinja), maka mekanisme interseptor view dan pengecekan di template dialihkan menggunakan **Inertia Shared Props** dan reaktivitas komponen React.
 
-    {% if "manage users" in user_permissions %}
-        <a href="/users" class="btn">👥 Manajemen User</a>
-    {% endif %}
+### 1. Membagikan Variabel secara Global via Inertia (Shared Props)
+Buka berkas helper Inertia Anda (misalnya di `src/app/inertia.rs`), lalu perbarui fungsi `inertia` untuk secara otomatis menginjeksi kapabilitas pengguna aktif ke dalam data `props` secara global:
 
-    <!-- Pemeriksaan Tingkat Tinggi via user_roles -->
-    {% if "admin" in user_roles %}
-        <a href="/roles-permissions" class="btn">🔐 Otorisasi RBAC</a>
-    {% endif %}
-</nav>
+```rust
+use serde_json::{json, Value};
+
+pub fn inertia(req: &Request, component: &str, mut props: Value) -> Response {
+    // 1. Baca data RBAC dari session cache yang super cepat
+    let perms = req.session.get::<Vec<String>>("user_permissions").unwrap_or_default();
+    let roles = req.session.get::<Vec<String>>("user_roles").unwrap_or_default();
+    
+    // 2. Suntikkan ke dalam objek props sebagai data 'auth' global
+    if let Value::Object(ref mut map) = props {
+        let mut auth_obj = serde_json::Map::new();
+        if let Some(user_id) = req.session.get::<i32>("user_id") {
+            auth_obj.insert("user".to_string(), json!({
+                "id": user_id,
+                "permissions": perms,
+                "roles": roles
+            }));
+        } else {
+            auth_obj.insert("user".to_string(), Value::Null);
+        }
+        map.insert("auth".to_string(), Value::Object(auth_obj));
+    }
+
+    // ... Lanjutkan logika rendering Inertia standar Anda ...
+}
+```
+
+### 2. Penggunaan di Controller (Inertia SPA Style)
+Controller Anda akan merender halaman menggunakan helper `inertia` dan tidak perlu menyertakan parameter izin secara manual:
+
+```rust
+use crate::app::inertia;
+
+pub async fn index(State(state): State<AppState>, req: Request) -> impl IntoResponse {
+    let total_users = users::Model::count(&state.db).await.unwrap_or(0);
+
+    // Render komponen halaman React "Dashboard"
+    inertia(&req, "Dashboard", json!({
+        "title": "Dashboard Overview",
+        "total_users": total_users
+    }))
+}
+```
+
+### 3. Pengecekan Hak Akses Langsung di Komponen React
+Di sisi React, Anda dapat mengakses hak akses pengguna global dari properti halaman (`props`) menggunakan hook `usePage` bawaan dari `@inertiajs/react` secara sangat deklaratif:
+
+```jsx
+import React from 'react';
+import { usePage, Link } from '@inertiajs/react';
+
+export default function Sidebar() {
+  // Ambil data auth yang secara otomatis diinjeksi oleh backend
+  const { auth } = usePage().props;
+  const user = auth?.user;
+
+  // Helper fungsi pengecekan
+  const hasPermission = (permission) => user?.permissions?.includes(permission);
+  const hasRole = (role) => user?.roles?.includes(role);
+
+  return (
+    <nav className="flex flex-col gap-2 p-4 bg-gray-900 text-white rounded-xl">
+      <Link href="/dashboard" className="px-4 py-2 hover:bg-white/10 rounded">
+        📊 Dashboard
+      </Link>
+
+      {/* 📝 Render Bersyarat Berdasarkan Permission */}
+      {hasPermission('edit articles') && (
+        <Link href="/articles/create" className="px-4 py-2 hover:bg-white/10 rounded">
+          📝 Tulis Artikel
+        </Link>
+      )}
+
+      {hasPermission('manage users') && (
+        <Link href="/users" className="px-4 py-2 hover:bg-white/10 rounded">
+          👥 Manajemen User
+        </Link>
+      )}
+
+      {/* 🔐 Render Bersyarat Berdasarkan Role */}
+      {hasRole('admin') && (
+        <Link href="/roles-permissions" className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded text-center font-bold">
+          🔐 Otorisasi RBAC
+        </Link>
+      )}
+    </nav>
+  );
+}
 ```
 
 ---
