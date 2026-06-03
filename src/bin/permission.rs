@@ -131,12 +131,12 @@ r#"use rustbasic_core::model;
 
 model! {{
     table: "{table}",
-    {class_name} {{
+    Model {{
         pub id: i32,
     {fields}
     }}
 }}
-"#, table = table, class_name = class_name, fields = fields);
+"#, table = table, fields = fields);
             
             fs::write(&file_path, model_template).expect("Gagal membuat model");
             update_model_mod_rs(class_name, name);
@@ -190,5 +190,5 @@ fn update_model_mod_rs(class_name: &str, snake_name: &str) {
         .expect("Gagal membuka models/mod.rs");
 
     writeln!(file, "{}", mod_line).ok();
-    writeln!(file, "pub use {}::{};", snake_name, class_name).ok();
+    writeln!(file, "pub use {}::Model as {};", snake_name, class_name).ok();
 }

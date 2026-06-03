@@ -1,10 +1,15 @@
-use serde::{Deserialize, Serialize};
+use rustbasic_core::model;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Permission {
-    pub id: i32,
-    pub name: String,
-    pub guard_name: String,
-    pub created_at: Option<String>,
-    pub updated_at: Option<String>,
+model! {
+    table: "permissions",
+    timestamps: true,
+    fillable: [name, guard_name],
+    guarded: [],
+    Model {
+        pub id: i32,
+        pub name: String,
+        pub guard_name: String,
+        pub created_at: Option<String>,
+        pub updated_at: Option<String>,
+    }
 }

@@ -130,12 +130,12 @@ r#"use rustbasic_core::model;
 
 model! {{
     table: "{table}",
-    {class_name} {{
+    Model {{
         pub id: i32,
     {fields}
     }}
 }}
-"#, table = table, class_name = class_name, fields = fields);
+"#, table = table, fields = fields);
 
             if fs::write(&file_path, model_template).is_ok() {
                 update_model_mod_rs(&project_root, class_name, name);
@@ -175,5 +175,5 @@ fn update_model_mod_rs(project_root: &std::path::Path, class_name: &str, snake_n
     let mut file = fs::OpenOptions::new().append(true).open(mod_path).unwrap();
     use std::io::Write;
     writeln!(file, "pub mod {};", snake_name).ok();
-    writeln!(file, "pub use {}::{};", snake_name, class_name).ok();
+    writeln!(file, "pub use {}::Model as {};", snake_name, class_name).ok();
 }
