@@ -1,13 +1,13 @@
-use rustbasic_core::sqlx::{self, AnyPool, Row};
+use rustbasic_core::sql::{self, AnyPool};
 use rustbasic_core::chrono::Utc;
 use crate::entities::{Role, Permission};
 
 pub struct PermissionService;
 
-fn map_row<T: serde::de::DeserializeOwned>(row: &sqlx::any::AnyRow) -> Result<T, sqlx::Error> {
+fn map_row<T: rustbasic_core::serde::de::DeserializeOwned>(row: &sql::any::AnyRow) -> Result<T, sql::Error> {
     let val = rustbasic_core::database::row_to_json_value(row);
     rustbasic_core::serde_json::from_value::<T>(val)
-        .map_err(|e| sqlx::Error::Protocol(format!("Deserialization error: {}", e)))
+        .map_err(|e| sql::Error::Protocol(format!("Deserialization error: {}", e)))
 }
 
 impl PermissionService {
@@ -16,11 +16,11 @@ impl PermissionService {
         db: &AnyPool,
         name: &str,
         guard_name: Option<&str>,
-    ) -> Result<Role, sqlx::Error> {
+    ) -> Result<Role, sql::Error> {
         let guard = guard_name.unwrap_or("web");
         
         // Cek apakah role sudah ada
-        if let Some(row) = sqlx::query::<sqlx::Any>("SELECT * FROM roles WHERE name = ?")
+        if let Some(row) = sql::query::<sql::Any>("SELECT * FROM roles WHERE name = ?")
             .bind(name)
             .fetch_optional(db)
             .await?
@@ -30,7 +30,7 @@ impl PermissionService {
 
         // Buat role baru
         let now = Utc::now().naive_utc().to_string();
-        sqlx::query::<sqlx::Any>("INSERT INTO roles (name, guard_name, created_at, updated_at) VALUES (?, ?, ?, ?)")
+        sql::query::<sql::Any>("INSERT INTO roles (name, guard_name, created_at, updated_at) VALUES (?, ?, ?, ?)")
             .bind(name)
             .bind(guard)
             .bind(&now)
@@ -39,7 +39,7 @@ impl PermissionService {
             .await?;
         
         // Ambil kembali data lengkap yang baru diinsert
-        let row = sqlx::query::<sqlx::Any>("SELECT * FROM roles WHERE name = ?")
+        let row = sql::query::<sql::Any>("SELECT * FROM roles WHERE name = ?")
             .bind(name)
             .fetch_one(db)
             .await?;
@@ -51,10 +51,10 @@ impl PermissionService {
         db: &AnyPool,
         name: &str,
         guard_name: Option<&str>,
-    ) -> Result<Permission, sqlx::Error> {
+    ) -> Result<Permission, sql::Error> {
         let guard = guard_name.unwrap_or("web");
         
-        if let Some(row) = sqlx::query::<sqlx::Any>("SELECT * FROM permissions WHERE name = ?")
+        if let Some(row) = sql::query::<sql::Any>("SELECT * FROM permissions WHERE name = ?")
             .bind(name)
             .fetch_optional(db)
             .await?
@@ -63,7 +63,7 @@ impl PermissionService {
         }
 
         let now = Utc::now().naive_utc().to_string();
-        sqlx::query::<sqlx::Any>("INSERT INTO permissions (name, guard_name, created_at, updated_at) VALUES (?, ?, ?, ?)")
+        sql::query::<sql::Any>("INSERT INTO permissions (name, guard_name, created_at, updated_at) VALUES (?, ?, ?, ?)")
             .bind(name)
             .bind(guard)
             .bind(&now)
@@ -71,7 +71,7 @@ impl PermissionService {
             .execute(db)
             .await?;
         
-        let row = sqlx::query::<sqlx::Any>("SELECT * FROM permissions WHERE name = ?")
+        let row = sql::query::<sql::Any>("SELECT * FROM permissions WHERE name = ?")
             .bind(name)
             .fetch_one(db)
             .await?;
@@ -84,16 +84,16 @@ impl PermissionService {
         model_type: &str,
         model_id: i32,
         role_name: &str,
-    ) -> Result<(), sqlx::Error> {
-        let role_row = sqlx::query::<sqlx::Any>("SELECT * FROM roles WHERE name = ?")
+    ) -> Result<(), sql::Error> {
+        let role_row = sql::query::<sql::Any>("SELECT * FROM roles WHERE name = ?")
             .bind(role_name)
             .fetch_optional(db)
             .await?
-            .ok_or(sqlx::Error::RowNotFound)?;
+            .ok_or(sql::Error::RowNotFound)?;
         let role = map_row::<Role>(&role_row)?;
 
         // Cek apakah sudah di-assign sebelumnya
-        let existing = sqlx::query::<sqlx::Any>("SELECT 1 FROM model_has_roles WHERE role_id = ? AND model_type = ? AND model_id = ?")
+        let existing = sql::query::<sql::Any>("SELECT 1 FROM model_has_roles WHERE role_id = ? AND model_type = ? AND model_id = ?")
             .bind(role.id)
             .bind(model_type)
             .bind(model_id)
@@ -101,7 +101,7 @@ impl PermissionService {
             .await?;
 
         if existing.is_none() {
-            sqlx::query::<sqlx::Any>("INSERT INTO model_has_roles (role_id, model_type, model_id) VALUES (?, ?, ?)")
+            sql::query::<sql::Any>("INSERT INTO model_has_roles (role_id, model_type, model_id) VALUES (?, ?, ?)")
                 .bind(role.id)
                 .bind(model_type)
                 .bind(model_id)
@@ -118,8 +118,8 @@ impl PermissionService {
         model_type: &str,
         model_id: i32,
         role_name: &str,
-    ) -> Result<(), sqlx::Error> {
-        let role_row = match sqlx::query::<sqlx::Any>("SELECT * FROM roles WHERE name = ?")
+    ) -> Result<(), sql::Error> {
+        let role_row = match sql::query::<sql::Any>("SELECT * FROM roles WHERE name = ?")
             .bind(role_name)
             .fetch_optional(db)
             .await?
@@ -129,7 +129,7 @@ impl PermissionService {
         };
         let role = map_row::<Role>(&role_row)?;
 
-        sqlx::query::<sqlx::Any>("DELETE FROM model_has_roles WHERE role_id = ? AND model_type = ? AND model_id = ?")
+        sql::query::<sql::Any>("DELETE FROM model_has_roles WHERE role_id = ? AND model_type = ? AND model_id = ?")
             .bind(role.id)
             .bind(model_type)
             .bind(model_id)
@@ -145,8 +145,8 @@ impl PermissionService {
         model_type: &str,
         model_id: i32,
         role_name: &str,
-    ) -> Result<bool, sqlx::Error> {
-        let role_row = match sqlx::query::<sqlx::Any>("SELECT * FROM roles WHERE name = ?")
+    ) -> Result<bool, sql::Error> {
+        let role_row = match sql::query::<sql::Any>("SELECT * FROM roles WHERE name = ?")
             .bind(role_name)
             .fetch_optional(db)
             .await?
@@ -156,7 +156,7 @@ impl PermissionService {
         };
         let role = map_row::<Role>(&role_row)?;
 
-        let existing = sqlx::query::<sqlx::Any>("SELECT 1 FROM model_has_roles WHERE role_id = ? AND model_type = ? AND model_id = ?")
+        let existing = sql::query::<sql::Any>("SELECT 1 FROM model_has_roles WHERE role_id = ? AND model_type = ? AND model_id = ?")
             .bind(role.id)
             .bind(model_type)
             .bind(model_id)
@@ -172,15 +172,15 @@ impl PermissionService {
         model_type: &str,
         model_id: i32,
         permission_name: &str,
-    ) -> Result<(), sqlx::Error> {
-        let perm_row = sqlx::query::<sqlx::Any>("SELECT * FROM permissions WHERE name = ?")
+    ) -> Result<(), sql::Error> {
+        let perm_row = sql::query::<sql::Any>("SELECT * FROM permissions WHERE name = ?")
             .bind(permission_name)
             .fetch_optional(db)
             .await?
-            .ok_or(sqlx::Error::RowNotFound)?;
+            .ok_or(sql::Error::RowNotFound)?;
         let perm = map_row::<Permission>(&perm_row)?;
 
-        let existing = sqlx::query::<sqlx::Any>("SELECT 1 FROM model_has_permissions WHERE permission_id = ? AND model_type = ? AND model_id = ?")
+        let existing = sql::query::<sql::Any>("SELECT 1 FROM model_has_permissions WHERE permission_id = ? AND model_type = ? AND model_id = ?")
             .bind(perm.id)
             .bind(model_type)
             .bind(model_id)
@@ -188,7 +188,7 @@ impl PermissionService {
             .await?;
 
         if existing.is_none() {
-            sqlx::query::<sqlx::Any>("INSERT INTO model_has_permissions (permission_id, model_type, model_id) VALUES (?, ?, ?)")
+            sql::query::<sql::Any>("INSERT INTO model_has_permissions (permission_id, model_type, model_id) VALUES (?, ?, ?)")
                 .bind(perm.id)
                 .bind(model_type)
                 .bind(model_id)
@@ -205,8 +205,8 @@ impl PermissionService {
         model_type: &str,
         model_id: i32,
         permission_name: &str,
-    ) -> Result<(), sqlx::Error> {
-        let perm_row = match sqlx::query::<sqlx::Any>("SELECT * FROM permissions WHERE name = ?")
+    ) -> Result<(), sql::Error> {
+        let perm_row = match sql::query::<sql::Any>("SELECT * FROM permissions WHERE name = ?")
             .bind(permission_name)
             .fetch_optional(db)
             .await?
@@ -216,7 +216,7 @@ impl PermissionService {
         };
         let perm = map_row::<Permission>(&perm_row)?;
 
-        sqlx::query::<sqlx::Any>("DELETE FROM model_has_permissions WHERE permission_id = ? AND model_type = ? AND model_id = ?")
+        sql::query::<sql::Any>("DELETE FROM model_has_permissions WHERE permission_id = ? AND model_type = ? AND model_id = ?")
             .bind(perm.id)
             .bind(model_type)
             .bind(model_id)
@@ -231,29 +231,29 @@ impl PermissionService {
         db: &AnyPool,
         role_name: &str,
         permission_name: &str,
-    ) -> Result<(), sqlx::Error> {
-        let role_row = sqlx::query::<sqlx::Any>("SELECT * FROM roles WHERE name = ?")
+    ) -> Result<(), sql::Error> {
+        let role_row = sql::query::<sql::Any>("SELECT * FROM roles WHERE name = ?")
             .bind(role_name)
             .fetch_optional(db)
             .await?
-            .ok_or(sqlx::Error::RowNotFound)?;
+            .ok_or(sql::Error::RowNotFound)?;
         let role = map_row::<Role>(&role_row)?;
 
-        let perm_row = sqlx::query::<sqlx::Any>("SELECT * FROM permissions WHERE name = ?")
+        let perm_row = sql::query::<sql::Any>("SELECT * FROM permissions WHERE name = ?")
             .bind(permission_name)
             .fetch_optional(db)
             .await?
-            .ok_or(sqlx::Error::RowNotFound)?;
+            .ok_or(sql::Error::RowNotFound)?;
         let perm = map_row::<Permission>(&perm_row)?;
 
-        let existing = sqlx::query::<sqlx::Any>("SELECT 1 FROM role_has_permissions WHERE role_id = ? AND permission_id = ?")
+        let existing = sql::query::<sql::Any>("SELECT 1 FROM role_has_permissions WHERE role_id = ? AND permission_id = ?")
             .bind(role.id)
             .bind(perm.id)
             .fetch_optional(db)
             .await?;
 
         if existing.is_none() {
-            sqlx::query::<sqlx::Any>("INSERT INTO role_has_permissions (role_id, permission_id) VALUES (?, ?)")
+            sql::query::<sql::Any>("INSERT INTO role_has_permissions (role_id, permission_id) VALUES (?, ?)")
                 .bind(role.id)
                 .bind(perm.id)
                 .execute(db)
@@ -268,8 +268,8 @@ impl PermissionService {
         db: &AnyPool,
         role_name: &str,
         permission_name: &str,
-    ) -> Result<(), sqlx::Error> {
-        let role_row = match sqlx::query::<sqlx::Any>("SELECT * FROM roles WHERE name = ?")
+    ) -> Result<(), sql::Error> {
+        let role_row = match sql::query::<sql::Any>("SELECT * FROM roles WHERE name = ?")
             .bind(role_name)
             .fetch_optional(db)
             .await?
@@ -279,7 +279,7 @@ impl PermissionService {
         };
         let role = map_row::<Role>(&role_row)?;
 
-        let perm_row = match sqlx::query::<sqlx::Any>("SELECT * FROM permissions WHERE name = ?")
+        let perm_row = match sql::query::<sql::Any>("SELECT * FROM permissions WHERE name = ?")
             .bind(permission_name)
             .fetch_optional(db)
             .await?
@@ -289,7 +289,7 @@ impl PermissionService {
         };
         let perm = map_row::<Permission>(&perm_row)?;
 
-        sqlx::query::<sqlx::Any>("DELETE FROM role_has_permissions WHERE role_id = ? AND permission_id = ?")
+        sql::query::<sql::Any>("DELETE FROM role_has_permissions WHERE role_id = ? AND permission_id = ?")
             .bind(role.id)
             .bind(perm.id)
             .execute(db)
@@ -304,8 +304,8 @@ impl PermissionService {
         model_type: &str,
         model_id: i32,
         permission_name: &str,
-    ) -> Result<bool, sqlx::Error> {
-        let perm_row = match sqlx::query::<sqlx::Any>("SELECT * FROM permissions WHERE name = ?")
+    ) -> Result<bool, sql::Error> {
+        let perm_row = match sql::query::<sql::Any>("SELECT * FROM permissions WHERE name = ?")
             .bind(permission_name)
             .fetch_optional(db)
             .await?
@@ -316,7 +316,7 @@ impl PermissionService {
         let perm = map_row::<Permission>(&perm_row)?;
 
         // 1. Cek izin langsung di model_has_permissions
-        let direct = sqlx::query::<sqlx::Any>("SELECT 1 FROM model_has_permissions WHERE permission_id = ? AND model_type = ? AND model_id = ?")
+        let direct = sql::query::<sql::Any>("SELECT 1 FROM model_has_permissions WHERE permission_id = ? AND model_type = ? AND model_id = ?")
             .bind(perm.id)
             .bind(model_type)
             .bind(model_id)
@@ -328,7 +328,7 @@ impl PermissionService {
         }
 
         // 2. Cek izin melalui peran (roles) yang dimiliki model
-        let has_perm_via_role = sqlx::query::<sqlx::Any>(
+        let has_perm_via_role = sql::query::<sql::Any>(
             "SELECT 1 FROM role_has_permissions rhp \
              JOIN model_has_roles mhr ON rhp.role_id = mhr.role_id \
              WHERE mhr.model_type = ? AND mhr.model_id = ? AND rhp.permission_id = ?"
@@ -347,8 +347,8 @@ impl PermissionService {
         db: &AnyPool,
         model_type: &str,
         model_id: i32,
-    ) -> Result<Vec<String>, sqlx::Error> {
-        let rows = sqlx::query::<sqlx::Any>("SELECT r.name FROM roles r JOIN model_has_roles mhr ON r.id = mhr.role_id WHERE mhr.model_type = ? AND mhr.model_id = ?")
+    ) -> Result<Vec<String>, sql::Error> {
+        let rows = sql::query::<sql::Any>("SELECT r.name FROM roles r JOIN model_has_roles mhr ON r.id = mhr.role_id WHERE mhr.model_type = ? AND mhr.model_id = ?")
             .bind(model_type)
             .bind(model_id)
             .fetch_all(db)
@@ -363,18 +363,18 @@ impl PermissionService {
         db: &AnyPool,
         model_type: &str,
         model_id: i32,
-    ) -> Result<Vec<String>, sqlx::Error> {
+    ) -> Result<Vec<String>, sql::Error> {
         // Cek apakah user adalah admin
         let roles = Self::get_all_roles_for(db, model_type, model_id).await?;
         if roles.iter().any(|r| r == "admin") {
-            let rows = sqlx::query::<sqlx::Any>("SELECT name FROM permissions")
+            let rows = sql::query::<sql::Any>("SELECT name FROM permissions")
                 .fetch_all(db)
                 .await?;
             return Ok(rows.into_iter().map(|row| row.get::<String, &str>("name")).collect());
         }
 
         // Ambil all permissions (direct + via roles)
-        let rows = sqlx::query::<sqlx::Any>(
+        let rows = sql::query::<sql::Any>(
             "SELECT p.name FROM permissions p \
              JOIN model_has_permissions mhp ON p.id = mhp.permission_id \
              WHERE mhp.model_type = ? AND mhp.model_id = ? \

@@ -1,4 +1,4 @@
-use rustbasic_core::sqlx::{AnyPool, Error};
+use rustbasic_core::sql::{AnyPool, Error};
 use rustbasic_core::schema::{Schema, SchemaManager};
 
 /// Membuat seluruh tabel RBAC secara otomatis jika belum ada di database.
@@ -40,6 +40,6 @@ pub async fn init_permission_tables(pool: &AnyPool) -> Result<(), Error> {
         table.integer("role_id").not_null();
     }).await?;
 
-    tracing::info!("Tabel-tabel rustbasic-permission berhasil diinisialisasi.");
+    rustbasic_core::tracing::info!("Tabel-tabel rustbasic-permission berhasil diinisialisasi.");
     Ok(())
 }

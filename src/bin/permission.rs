@@ -1,7 +1,7 @@
 use std::fs::{self, OpenOptions};
 use std::io::Write;
-use chrono::Local;
-use colored::*;
+use rustbasic_core::chrono::Local;
+use rustbasic_core::colored::Colorize;
 use std::env;
 
 fn main() {

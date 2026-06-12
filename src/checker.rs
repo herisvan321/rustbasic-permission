@@ -1,4 +1,4 @@
-use rustbasic_core::sqlx::{self, AnyPool};
+use rustbasic_core::sql::{self, AnyPool};
 use rustbasic_core::session::Session;
 use rustbasic_core::responses::ResponseHelper;
 use rustbasic_core::router::Response;
@@ -41,7 +41,7 @@ impl<'a> PermissionChecker<'a> {
     }
 
     /// Memeriksa apakah user yang sedang login memiliki Role tertentu.
-    pub async fn has_role(&self, role_name: &str) -> Result<bool, sqlx::Error> {
+    pub async fn has_role(&self, role_name: &str) -> Result<bool, sql::Error> {
         let uid = match self.user_id() {
             Some(id) => id,
             None => return Ok(false),
@@ -50,7 +50,7 @@ impl<'a> PermissionChecker<'a> {
     }
 
     /// Memeriksa apakah user yang sedang login memiliki Permission tertentu.
-    pub async fn has_permission(&self, permission_name: &str) -> Result<bool, sqlx::Error> {
+    pub async fn has_permission(&self, permission_name: &str) -> Result<bool, sql::Error> {
         let uid = match self.user_id() {
             Some(id) => id,
             None => return Ok(false),
