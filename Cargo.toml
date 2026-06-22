@@ -1,6 +1,6 @@
 [package]
 name = "rustbasic-permission"
-version = "0.0.10"
+version = "0.0.11"
 edition = "2024"
 build = "build.rs"
 description = "Role and Permission management package for the RustBasic Framework."
@@ -15,7 +15,7 @@ name = "rustbasic_permission"
 path = "src/lib.rs"
 
 [dependencies]
-rustbasic-core = "0.1"
+rustbasic-core = "0.0"
 
 [build-dependencies]
 
