@@ -30,30 +30,42 @@ Secara otomatis mengelola 5 tabel standar:
 ## 🚀 Panduan Instalasi & Penggunaan Lengkap
 
 ### 1. Instalasi
-Tambahkan `rustbasic-permission` ke dalam berkas `Cargo.toml` pada root proyek aplikasi Anda:
 
-```toml
-[dependencies]
-rustbasic-permission = "0.0.7"
+Cara termudah dan direkomendasikan untuk memasang package ini adalah dengan menggunakan CLI **RustBasic**:
+
+```bash
+rustbasic install rustbasic-permission
 ```
+
+Perintah ini akan secara otomatis:
+- Menambahkan `rustbasic-permission` ke `Cargo.toml` proyek Anda.
+- Menjalankan generator scaffolding untuk membuat tabel migrasi dan model RBAC.
+- Menghubungkan modul ke dalam proyek Anda secara otomatis.
 
 ---
 
-### 2. Inisialisasi Otomatis (Magic Scaffolding)
-Cukup jalankan build pada proyek Anda, dan `rustbasic-permission` akan secara otomatis membuat migrasi dan model yang diperlukan jika belum ada:
+### 2. Instalasi Manual (Alternatif)
 
-```bash
-cargo build
-```
+Jika Anda ingin memasangnya secara manual:
 
-Perintah ini akan secara otomatis membuat:
-- 📂 **Migration**: File migrasi baru di `database/migrations/` untuk 5 tabel RBAC.
-- 📂 **Models**: File model di `src/app/models/` (`Role`, `Permission`, dll).
+1. Tambahkan `rustbasic-permission` ke dalam berkas `Cargo.toml` pada root proyek aplikasi Anda:
 
-Setelah menjalankan perintah di atas, jalankan migrasi database:
-```bash
-rustbasic migrate
-```
+   ```toml
+   [dependencies]
+   rustbasic-permission = "0.0.12"
+   ```
+
+2. Jalankan kompilasi proyek Anda, sistem build akan membuat file scaffolding secara otomatis:
+
+   ```bash
+   cargo build
+   ```
+
+3. Jalankan migrasi database untuk membuat tabel RBAC:
+
+   ```bash
+   rustbasic migrate
+   ```
 
 ---
 
