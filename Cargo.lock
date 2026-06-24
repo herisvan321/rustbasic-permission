@@ -1095,7 +1095,7 @@ dependencies = [
 
 [[package]]
 name = "rustbasic-permission"
-version = "0.0.12"
+version = "0.0.13"
 dependencies = [
  "rustbasic-core",
 ]

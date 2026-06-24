@@ -13,14 +13,19 @@ pub fn make_permission_scaffolding() {
     }
 
     // 1. Buat Migration
-    let timestamp = Local::now().format("%Y%m%d_%H%M%S").to_string();
+    // Use timestamp with milliseconds to ensure unique migration name
+    let timestamp = Local::now().format("%Y%m%d_%H%M%S_%3f").to_string();
     let migration_name = format!("m{}_create_rbac_tables", timestamp);
     let migration_path = format!("database/migrations/{}.rs", migration_name);
 
     // Pastikan folder migrations ada
     fs::create_dir_all("database/migrations").ok();
 
-    let migration_template = format!(
+    // Jika migration sudah ada, lewati pembuatan
+    if std::path::Path::new(&migration_path).exists() {
+        println!("   {} Migration sudah ada: {}", "⚠️".yellow(), migration_path.cyan());
+    } else {
+        let migration_template = format!(
 r#"use rustbasic_core::{{Schema, SchemaManager, MigrationTrait, DbErr}};
 use rustbasic_core::async_trait;
 
@@ -85,6 +90,7 @@ impl MigrationTrait for Migration {{
     fs::write(&migration_path, migration_template).expect("Gagal membuat migration RBAC");
     update_migration_mod_rs(&migration_name);
     println!("   {} Migration dibuat: {}", "📦".blue(), migration_path.cyan());
+    }
 
     // 2. Buat Model
     let models = vec![
@@ -124,11 +130,18 @@ model! {{
 
 fn update_migration_mod_rs(mod_name: &str) {
     let mod_path = "database/migrations/mod.rs";
-    if !std::path::Path::new(mod_path).exists() { return; }
+    // Ensure the mod.rs file exists; create empty if missing
+    if !std::path::Path::new(mod_path).exists() {
+        // create parent directories just in case
+        if let Some(parent) = std::path::Path::new(mod_path).parent() {
+            std::fs::create_dir_all(parent).ok();
+        }
+        std::fs::File::create(mod_path).ok();
+    }
 
     let mut content = fs::read_to_string(mod_path).unwrap_or_default();
 
-    // Tambahkan mod declaration
+    // Tambahkan mod declaration jika belum ada
     if !content.contains(&format!("pub mod {};", mod_name)) {
         if !content.is_empty() && !content.ends_with('\n') {
             content.push('\n');
@@ -136,12 +149,17 @@ fn update_migration_mod_rs(mod_name: &str) {
         content.push_str(&format!("pub mod {};\n", mod_name));
     }
 
-    // Tambahkan ke list migrations
+    // Tambahkan ke list migrations, hindari duplikat
+    let insertion = format!("            Box::new({}::Migration),\n", mod_name);
     let search_pattern = "fn migrations() -> Vec<Box<dyn MigrationTrait>> {";
-    if let Some(pos) = content.find(search_pattern)
-        && let Some(insert_pos) = content[pos..].find("        ]") {
-        let absolute_insert_pos = pos + insert_pos;
-        content.insert_str(absolute_insert_pos, &format!("            Box::new({}::Migration),\n", mod_name));
+    if let Some(pos) = content.find(search_pattern) {
+        // Pastikan belum ada entri yang sama
+        if !content[pos..].contains(&insertion) {
+            if let Some(insert_pos) = content[pos..].find("        ]") {
+                let absolute_insert_pos = pos + insert_pos;
+                content.insert_str(absolute_insert_pos, &insertion);
+            }
+        }
     }
 
     fs::write(mod_path, content).ok();

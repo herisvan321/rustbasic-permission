@@ -1,6 +1,6 @@
 [package]
 name = "rustbasic-permission"
-version = "0.0.12"
+version = "0.0.13"
 edition = "2024"
 build = "build.rs"
 description = "Role and Permission management package for the RustBasic Framework."
